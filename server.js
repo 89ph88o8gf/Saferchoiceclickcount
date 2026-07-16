@@ -23,6 +23,10 @@ async function start() {
 
     console.log("Redis connected");
 
+// Ping endpoint
+app.get("/ping", (req, res) => {
+    res.status(200).send("OK");
+});
 
     app.get("/download", async (req, res) => {
 
