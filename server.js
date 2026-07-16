@@ -28,57 +28,73 @@ app.get("/ping", (req, res) => {
     res.status(200).send("OK");
 });
 
-    app.get("/download", async (req, res) => {
+   app.get("/download", async (req, res) => {
 
-        let deviceId = req.cookies.safer_device;
+    let deviceId = req.cookies.safer_device;
 
+    // Ako je prvi put otvorio link
+    if (!deviceId) {
 
-        // Ako je prvi put otvorio link
-        if (!deviceId) {
+        deviceId = uuidv4();
 
-            deviceId = uuidv4();
+        res.cookie(
+            "safer_device",
+            deviceId,
+            {
+                maxAge: 1000 * 60 * 60 * 24 * 365,
+                httpOnly: true
+            }
+        );
 
+        console.log("🆕 Novi korisnik - dodeljen cookie:", deviceId);
 
-            res.cookie(
-                "safer_device",
-                deviceId,
-                {
-                    maxAge: 1000 * 60 * 60 * 24 * 365,
-                    httpOnly: true
-                }
-            );
+        const exists = await redis.sIsMember(
+            "download_devices",
+            deviceId
+        );
 
+        if (!exists) {
 
-            // proveri da li postoji
-            const exists = await redis.sIsMember(
+            await redis.sAdd(
                 "download_devices",
                 deviceId
             );
 
+            const total = await redis.incr(
+                "total_download_clicks"
+            );
 
-            if (!exists) {
+            console.log(
+                "✅ PRIHVAĆEN | Device:",
+                deviceId,
+                "| Ukupno jedinstvenih:",
+                total
+            );
 
-                await redis.sAdd(
-                    "download_devices",
-                    deviceId
-                );
+        } else {
 
-
-                await redis.incr(
-                    "total_download_clicks"
-                );
-
-            }
+            console.log(
+                "❌ ODBIJEN | Device već postoji u Redis-u:",
+                deviceId
+            );
 
         }
 
+    } else {
 
-        // redirekcija na Google Play
-        res.redirect(
-            "https://play.google.com/store/apps/details?id=com.saferchoice.android"
+        console.log(
+            "❌ ODBIJEN | Korisnik već ima cookie:",
+            deviceId
         );
 
-    });
+    }
+
+    // Redirekcija na Google Play
+    res.redirect(
+        "https://play.google.com/store/apps/details?id=com.saferchoice.android"
+    );
+
+});
 
 
 
